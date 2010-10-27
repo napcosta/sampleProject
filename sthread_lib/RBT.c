@@ -61,7 +61,7 @@ void lower(struct rbt * tree)
 
 	struct node * node;
 
-	for (node = tree->root; node->left != tree->nil; node = node->left);
+	for (node = tree->first; node != tree->nil && node->left != tree->nil; node = node->left);
 
 	tree->first = node;
 
@@ -557,6 +557,12 @@ struct _sthread *remove_node(struct rbt *tree, int vruntime)
 		substitute(tree, delete_node, y);
 		if (isRoot(tree, y))
 			tree->root = y;
+	}
+
+	if (y == tree->first){
+		if (y->parent == tree->nil && y->right != tree->nil)
+			tree->first = minimum(tree, y->right);
+		else tree->first = x->parent; 
 	}
 
 	if(y->color == BLACK)
