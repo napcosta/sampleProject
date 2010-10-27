@@ -1,5 +1,5 @@
 /* 
- * test-sleep.c
+ * escalonamneto-01.c
  *
  * Simple test of thread create
  * 
@@ -14,34 +14,28 @@
 void *thread_start(void *);
 
 
-int success = 0;
-
-
 int main(int argc, char **argv)
 {
-  sthread_t thr;
-  void *ret;
   int i;
 
-  printf("Testing sthread_sleep, impl: %s\n",
+  printf("Testing sthread_create, impl: %s\n",
 	 (sthread_get_impl() == STHREAD_PTHREAD_IMPL) ? "pthread" : "user");
-  
+	
   sthread_init();
-  
-  if ((thr = sthread_create(thread_start, (void*)1,1)) == NULL) {
+    
+  if (sthread_create(thread_start, (void*)1, 1) == NULL) {
+    printf("sthread_create failed\n");
     exit(-1);
   }
-  
-  for (i = 1; i <= 15; i++){
-    sthread_sleep(1000000);
-    printf("elapsed %i secs\n", i);
-  }
-
+    
+  for(i=0;i<300000000;i++);
   return 0;
 }
 
 
 void *thread_start(void *arg)
 {
-  for(;;);
+  if ((int)arg == 1)
+    printf("Sucesso!\n");
+  return 0;
 }

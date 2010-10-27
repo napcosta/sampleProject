@@ -25,27 +25,27 @@ void sthread_init(void) {
   IMPL_CHOOSE(sthread_pthread_init(), sthread_user_init());
 }
 
-sthread_t sthread_create(sthread_start_func_t start_routine, void *arg) {
-  sthread_t newth;
-  IMPL_CHOOSE(newth = sthread_pthread_create(start_routine, arg),
-	      newth = sthread_user_create(start_routine, arg));
-  return newth;
+//o que se faz agora com o "int priority"???
+sthread_t sthread_create(sthread_start_func_t start_routine, void *arg, int priority) {
+	sthread_t newth;
+	IMPL_CHOOSE(newth = sthread_pthread_create(start_routine, arg), newth = sthread_user_create(start_routine, arg));
+	return newth;
 }
 
 void sthread_exit(void *ret) {
-  IMPL_CHOOSE(sthread_pthread_exit(ret), sthread_user_exit(ret));
+	IMPL_CHOOSE(sthread_pthread_exit(ret), sthread_user_exit(ret));
 }
 
 void sthread_yield(void) {
-  IMPL_CHOOSE(sthread_pthread_yield(), sthread_user_yield());
+	IMPL_CHOOSE(sthread_pthread_yield(), sthread_user_yield());
 }
 
 int sthread_sleep(int time) {
-   return IMPL_CHOOSE(sthread_pthread_sleep(time),sthread_user_sleep(time));
+	return IMPL_CHOOSE(sthread_pthread_sleep(time),sthread_user_sleep(time));
 }
 
 int sthread_join(sthread_t thread, void **value_ptr) {
-  return IMPL_CHOOSE(sthread_pthread_join(thread,value_ptr),sthread_user_join(thread,value_ptr));
+	return IMPL_CHOOSE(sthread_pthread_join(thread,value_ptr),sthread_user_join(thread,value_ptr));
 }
 
 /**********************************************************************/
@@ -54,62 +54,53 @@ int sthread_join(sthread_t thread, void **value_ptr) {
 
 
 sthread_mutex_t sthread_mutex_init() {
-  sthread_mutex_t lock;
-  IMPL_CHOOSE(lock = sthread_pthread_mutex_init(),
-	      lock = sthread_user_mutex_init());
-  return lock;
+  	sthread_mutex_t lock;
+  	IMPL_CHOOSE(lock = sthread_pthread_mutex_init(),
+		      lock = sthread_user_mutex_init());
+  	return lock;
 }
 
 void sthread_mutex_free(sthread_mutex_t lock) {
-  IMPL_CHOOSE(sthread_pthread_mutex_free(lock),
-	      sthread_user_mutex_free(lock));
+	IMPL_CHOOSE(sthread_pthread_mutex_free(lock),
+		sthread_user_mutex_free(lock));
 }
 
 void sthread_mutex_lock(sthread_mutex_t lock) {
-  IMPL_CHOOSE(sthread_pthread_mutex_lock(lock),
-	      sthread_user_mutex_lock(lock));
+	IMPL_CHOOSE(sthread_pthread_mutex_lock(lock), sthread_user_mutex_lock(lock));
 }
 
 void sthread_mutex_unlock(sthread_mutex_t lock) {
-  IMPL_CHOOSE(sthread_pthread_mutex_unlock(lock),
-	      sthread_user_mutex_unlock(lock));
+	IMPL_CHOOSE(sthread_pthread_mutex_unlock(lock), sthread_user_mutex_unlock(lock));
 }
 
 sthread_mon_t sthread_monitor_init() {
-  sthread_mon_t mon;
-  IMPL_CHOOSE(mon = sthread_pthread_monitor_init(),
-	      mon = sthread_user_monitor_init());
+	sthread_mon_t mon;
+	IMPL_CHOOSE(mon = sthread_pthread_monitor_init(), mon = sthread_user_monitor_init());
   return mon;
 }
 
 void sthread_monitor_free(sthread_mon_t mon) {
-  IMPL_CHOOSE(sthread_pthread_monitor_free(mon),
-	      sthread_user_monitor_free(mon));
+	IMPL_CHOOSE(sthread_pthread_monitor_free(mon), sthread_user_monitor_free(mon));
 }
 
 void sthread_monitor_enter(sthread_mon_t mon) {
-  IMPL_CHOOSE(sthread_pthread_monitor_enter(mon),
-	      sthread_user_monitor_enter(mon));
+	IMPL_CHOOSE(sthread_pthread_monitor_enter(mon), sthread_user_monitor_enter(mon));
 }
 
 void sthread_monitor_exit(sthread_mon_t mon) {
-  IMPL_CHOOSE(sthread_pthread_monitor_exit(mon),
-	      sthread_user_monitor_exit(mon));
+	IMPL_CHOOSE(sthread_pthread_monitor_exit(mon), sthread_user_monitor_exit(mon));
 }
 
 
 void sthread_monitor_wait(sthread_mon_t mon) {
-  IMPL_CHOOSE(sthread_pthread_monitor_wait(mon),
-	      sthread_user_monitor_wait(mon));
+	IMPL_CHOOSE(sthread_pthread_monitor_wait(mon), sthread_user_monitor_wait(mon));
 }
 
 void sthread_monitor_signal(sthread_mon_t mon) {
-  IMPL_CHOOSE(sthread_pthread_monitor_signal(mon),
-	      sthread_user_monitor_signal(mon));
+	IMPL_CHOOSE(sthread_pthread_monitor_signal(mon), sthread_user_monitor_signal(mon));
 }
 
 void sthread_monitor_signalall(sthread_mon_t mon) {
-  IMPL_CHOOSE(sthread_pthread_monitor_signalall(mon),
-	      sthread_user_monitor_signalall(mon));
+	IMPL_CHOOSE(sthread_pthread_monitor_signalall(mon), sthread_user_monitor_signalall(mon));
 }
 

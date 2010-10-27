@@ -39,7 +39,7 @@ int main(int argc, char **argv)
       exit(1);
    }
 
-   if (sthread_create(thread_2, (void*)count, 1) == NULL) {
+   if (sthread_create(thread_2, (void*)count) == NULL) {
       printf("sthread_create failed\n");
       exit(1);
    }
