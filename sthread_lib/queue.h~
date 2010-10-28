@@ -3,9 +3,9 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
-#include <sthread.h>
+/*#include <sthread.h>
 #include <sthread_user.h>
-
+*/
 
 /* queue_element_t */
 typedef struct queue_element {

@@ -20,7 +20,6 @@
 #include <sthread_ctx.h>
 #include <sthread_time_slice.h>
 #include <sthread_user.h>
-#include "queue.h"
 #include "RBT.h"
 
 
@@ -40,10 +39,10 @@ struct _sthread {
 };
 
 
-static queue_t *exe_thr_list;         /* lista de threads executaveis */
+static struct rbt *exe_thr_list;         /* lista de threads executaveis */
 static queue_t *dead_thr_list;        /* lista de threads "mortas" */
 static queue_t *sleep_thr_list;
-static queue_t *join_thr_list;
+static queue_t *join_thr_list;       /* WTF? */
 static queue_t *zombie_thr_list;
 static struct _sthread *active_thr;   /* thread activa */
 static int tid_gen;                   /* gerador de tid's */
@@ -54,6 +53,7 @@ static int tid_gen;                   /* gerador de tid's */
 #define MIN_DELAY 5*CLOCK_TICK
 #define MIN_PRIORITY 1
 #define MAX_PRIORITY 10
+#define BASE_VRUNTIME 0
 static long Clock;
 
 
@@ -112,7 +112,7 @@ int sthread_nice(int nice)
 
 void sthread_user_init(void) {
 
-  	exe_thr_list = create_queue();
+  	exe_thr_list = rbt_init();
 	dead_thr_list = create_queue();
 	sleep_thr_list = create_queue();
 	join_thr_list = create_queue();
@@ -138,6 +138,7 @@ void sthread_user_init(void) {
 sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int priority)
 {
   	struct _sthread *new_thread = (struct _sthread*)malloc(sizeof(struct _sthread));
+
 	sthread_ctx_start_func_t func = sthread_aux_start;
   	new_thread->args = arg;
  	new_thread->start_routine_ptr = start_routine;
@@ -147,10 +148,13 @@ sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int
   	new_thread->saved_ctx = sthread_new_ctx(func);
 
 	new_thread->priority = priority;
+	new_thread->vruntime = priority;
+	new_thread->nice = 0;
   
   	splx(HIGH);
   	new_thread->tid = tid_gen++;
-  	queue_insert(exe_thr_list, new_thread);
+
+  	rbt_insert(exe_thr_list, priority, new_thread);
   	splx(LOW);
   	return new_thread;
 }

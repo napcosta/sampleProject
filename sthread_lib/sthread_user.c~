@@ -20,7 +20,7 @@
 #include <sthread_ctx.h>
 #include <sthread_time_slice.h>
 #include <sthread_user.h>
-#include "queue.h"
+#include "RBT.h"
 
 
 struct _sthread {
@@ -39,10 +39,10 @@ struct _sthread {
 };
 
 
-static queue_t *exe_thr_list;         /* lista de threads executaveis */
+static struct rbt *exe_thr_list;         /* lista de threads executaveis */
 static queue_t *dead_thr_list;        /* lista de threads "mortas" */
 static queue_t *sleep_thr_list;
-static queue_t *join_thr_list;
+static queue_t *join_thr_list;       /* WTF? */
 static queue_t *zombie_thr_list;
 static struct _sthread *active_thr;   /* thread activa */
 static int tid_gen;                   /* gerador de tid's */
@@ -111,7 +111,7 @@ int sthread_nice(int nice)
 
 void sthread_user_init(void) {
 
-  	exe_thr_list = create_queue();
+  	exe_thr_list = rbt_init();
 	dead_thr_list = create_queue();
 	sleep_thr_list = create_queue();
 	join_thr_list = create_queue();
@@ -149,7 +149,7 @@ sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int
   
   	splx(HIGH);
   	new_thread->tid = tid_gen++;
-  	queue_insert(exe_thr_list, new_thread);
+  	insert_node(exe_thr_list, new_thread);
   	splx(LOW);
   	return new_thread;
 }
