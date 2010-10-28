@@ -3,7 +3,7 @@ LIBRARIES = libsthread.a libsthread_start.a
  OBJECTS = sthread.o sthread_pthread.o \
 	sthread_ctx.o sthread_util.o sthread_time_slice.o \
 	sthread_switch.o sthread_end.o queue.o \
-	sthread_user.o
+	sthread_user.o RBT.o
 
 
 start_OBJECTS = sthread_start.o
