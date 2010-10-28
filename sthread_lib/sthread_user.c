@@ -174,7 +174,7 @@ void sthread_user_exit(void *ret) {
 
       		if (thread->join_tid == active_thr->tid) {
          		thread->join_ret = ret;
-			queue_insert(exe_thr_list,thread);
+			rbt_insert(exe_thr_list, thread->vruntime ,thread);
          		is_zombie = 0;
       		} else {
 			queue_insert(tmp_queue,thread);
