@@ -31,6 +31,11 @@ struct _sthread {
   	void *join_ret;
   	void *args;
   	int tid;          /* meramente informativo */
+
+	int priority;
+	int vruntime;
+	int nice;
+
 };
 
 
@@ -44,6 +49,10 @@ static int tid_gen;                   /* gerador de tid's */
 
 
 #define CLOCK_TICK 10000
+
+#define MIN_DELAY 5*CLOCK_TICK
+#define MIN_PRIORITY 1
+#define MAX_PRIORITY 10
 static long Clock;
 
 
@@ -62,13 +71,12 @@ void sthread_aux_start(void){
 
 void sthread_user_dispatcher(void);
 
-int sthread_nice(int nice);
 
 void sthread_dump() 
 {
 	puts("=== dump start ===");
 	puts("active thread");
-	printf("id: priority: vruntime: \n");
+	printf("id: %d priority: %d vruntime: %d \n", active_thr->tid, active_thr->priority, active_thr->vruntime);
 	printf("runtime: sleeptime: \n");
 	printf("waittime: \n");
 	puts("");
@@ -87,6 +95,18 @@ void sthread_dump()
 	printf("runtime: sleeptime: \n");
 	printf("waittime: \n");
 	puts("Dump End");	
+}
+
+
+int sthread_nice(int nice)
+{
+	if (nice >= 0 && nice <= 10) {
+		active_thr->nice = nice;
+		return active_thr->priority + nice;
+	} else {
+		puts("Invalid nice");
+		return -1;
+	}
 }
 
 void sthread_user_init(void) {
@@ -114,7 +134,7 @@ void sthread_user_init(void) {
 }
 
 
-sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg)
+sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int priority)
 {
   	struct _sthread *new_thread = (struct _sthread*)malloc(sizeof(struct _sthread));
 	sthread_ctx_start_func_t func = sthread_aux_start;
@@ -124,6 +144,8 @@ sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg)
   	new_thread->join_tid = 0;
   	new_thread->join_ret = NULL;
   	new_thread->saved_ctx = sthread_new_ctx(func);
+
+	new_thread->priority = priority;
   
   	splx(HIGH);
   	new_thread->tid = tid_gen++;
@@ -256,7 +278,7 @@ int sthread_user_join(sthread_t thread, void **value_ptr)
          		queue_insert(dead_thr_list,thread);
          		found = 1;
       		} else {
-         		queue_insert(tmp_queue,thread);
+         		queue_insert(tmp_queue, zthread);
       		}
    	}
    	delete_queue(zombie_thr_list);
