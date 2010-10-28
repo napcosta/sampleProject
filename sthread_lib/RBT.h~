@@ -22,6 +22,17 @@ struct rbt {
 
 };
 
+<<<<<<< HEAD
+struct rbt *init_tree();
+
+void insert_node(struct rbt *tree, int vruntime, struct _sthread *thread);
+
+struct _sthread *remove_node(struct rbt *tree, int vruntime);
+
+void printTree(struct rbt *tree);
+
+void destroy_tree(struct rbt *tree);
+=======
 struct rbt *rbt_init();
 
 void rbt_insert(struct rbt *tree, int vruntime, struct _sthread *thread);
@@ -29,3 +40,4 @@ void rbt_insert(struct rbt *tree, int vruntime, struct _sthread *thread);
 struct _sthread *rbt_remove(struct rbt *tree, int vruntime);
 
 void rbt_destroy(struct rbt *tree);
+>>>>>>> upstream/master

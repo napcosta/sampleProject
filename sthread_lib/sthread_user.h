@@ -10,7 +10,7 @@
 
 /* Basic Threads */
 void sthread_user_init(void);
-sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg);
+sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int priority);
 void sthread_user_exit(void *ret);
 void sthread_user_yield(void);
 

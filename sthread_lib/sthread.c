@@ -28,7 +28,7 @@ void sthread_init(void) {
 //o que se faz agora com o "int priority"???
 sthread_t sthread_create(sthread_start_func_t start_routine, void *arg, int priority) {
 	sthread_t newth;
-	IMPL_CHOOSE(newth = sthread_pthread_create(start_routine, arg), newth = sthread_user_create(start_routine, arg));
+	IMPL_CHOOSE(newth = sthread_pthread_create(start_routine, arg), newth = sthread_user_create(start_routine, arg, priority));
 	return newth;
 }
 

@@ -7,7 +7,11 @@
 struct node *create_nil();
 
 /* Initialize the Red Black Tree header */
+<<<<<<< HEAD
+struct rbt *init_tree(){
+=======
 struct rbt *rbt_init(){
+>>>>>>> upstream/master
 
 	struct rbt *tree = malloc(sizeof(struct rbt));
 
@@ -297,7 +301,11 @@ void insert_node_right(struct rbt *tree, struct node *current_node, struct node 
 }
 
 
+<<<<<<< HEAD
+void insert_node(struct rbt* tree, int vruntime, struct _sthread *thread){
+=======
 void rbt_insert(struct rbt* tree, int vruntime, struct _sthread *thread){
+>>>>>>> upstream/master
 
 	struct node *current_node = tree->root;
 	struct node *add_item = create_node(tree, vruntime, thread);
@@ -515,7 +523,11 @@ void destroy_node(struct node *node){
 	free(node);
 }
 
+<<<<<<< HEAD
+struct _sthread *remove_node(struct rbt *tree, int vruntime)
+=======
 struct _sthread *rbt_remove(struct rbt *tree, int vruntime)
+>>>>>>> upstream/master
 {
 	struct node *delete_node = find_node(tree, vruntime);
 	struct node *y;
@@ -578,12 +590,20 @@ struct _sthread *rbt_remove(struct rbt *tree, int vruntime)
 	return thread;
 }
 
+<<<<<<< HEAD
+void destroy_tree(struct rbt *tree)
+=======
 void rbt_destroy(struct rbt *tree)
+>>>>>>> upstream/master
 {
 	struct _sthread *thread;
 
 	while(tree->root != tree->nil){
+<<<<<<< HEAD
+		thread = remove_node(tree, tree->first->vruntime);
+=======
 		thread = rbt_remove(tree, tree->first->vruntime);
+>>>>>>> upstream/master
 		free(thread);
 	}
 
