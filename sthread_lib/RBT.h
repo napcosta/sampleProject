@@ -29,3 +29,9 @@ void rbt_insert(struct rbt *tree, int vruntime, struct _sthread *thread);
 struct _sthread *rbt_remove(struct rbt *tree, int vruntime);
 
 void rbt_destroy(struct rbt *tree);
+
+int rbt_is_empty(struct rbt *tree);
+
+struct _sthread *rbt_remove_first(struct rbt *tree);
+
+struct node *rbt_find(struct rbt *tree, int vruntime);

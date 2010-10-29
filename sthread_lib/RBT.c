@@ -11,9 +11,9 @@ struct rbt *rbt_init(){
 
 	struct rbt *tree = malloc(sizeof(struct rbt));
 
-	tree->root = NULL;
-	tree->first = NULL;
 	tree->nil = create_nil();
+	tree->root = tree->nil;
+	tree->first = tree->nil;
 
 	return tree;
 
@@ -299,15 +299,16 @@ void insert_node_right(struct rbt *tree, struct node *current_node, struct node 
 
 void rbt_insert(struct rbt* tree, int vruntime, struct _sthread *thread){
 
-	struct node *current_node = tree->root;
 	struct node *add_item = create_node(tree, vruntime, thread);
 
-	if(current_node == NULL) {
+	if(rbt_is_empty(tree)) {
 		add_item->color = BLACK;
 		tree->root = add_item;
 		tree->first = tree->root;
 		return;
 	}
+
+	struct node *current_node = tree->root;
 
 	if(vruntime < current_node->vruntime)
 		insert_node_left(tree, current_node->left, current_node, add_item);
@@ -319,7 +320,7 @@ void rbt_insert(struct rbt* tree, int vruntime, struct _sthread *thread){
 
 }
 
-struct node *find_node(struct rbt *tree, int vruntime)
+struct node *rbt_find(struct rbt *tree, int vruntime)
 {
 	struct node *current_node;
 
@@ -517,7 +518,7 @@ void destroy_node(struct node *node){
 
 struct _sthread *rbt_remove(struct rbt *tree, int vruntime)
 {
-	struct node *delete_node = find_node(tree, vruntime);
+	struct node *delete_node = rbt_find(tree, vruntime);
 	struct node *y;
 	struct node *x;
 
@@ -589,4 +590,16 @@ void rbt_destroy(struct rbt *tree)
 
 	free(tree->nil);
 	free(tree);
+}
+
+int rbt_is_empty(struct rbt *tree)
+{
+	if(tree->root == tree->nil)
+		return 1;
+	return 0;
+}
+
+struct _sthread *rbt_remove_first(struct rbt *tree)
+{
+	return rbt_remove(tree, tree->first->vruntime);
 }

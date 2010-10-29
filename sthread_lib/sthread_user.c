@@ -190,8 +190,8 @@ void sthread_user_exit(void *ret) {
    	}
    
 
-   	if(queue_is_empty(exe_thr_list)) {  /* pode acontecer se a unica thread em execucao fizer */
-    		free(exe_thr_list);              /* sthread_exit(0). Este codigo garante que o programa sai bem. */
+   	if(rbt_is_empty(exe_thr_list)) {  /* pode acontecer se a unica thread em execucao fizer */
+    		rbt_destroy(exe_thr_list);              /* sthread_exit(0). Este codigo garante que o programa sai bem. */
     		delete_queue(dead_thr_list);
     		sthread_user_free(active_thr);
     		printf("Exec queue is empty!\n");
@@ -201,7 +201,7 @@ void sthread_user_exit(void *ret) {
   
    	// remove from exec list
    	struct _sthread *old_thr = active_thr;
-   	active_thr = queue_remove(exe_thr_list);
+   	active_thr = rbt_remove_first(exe_thr_list);
    	sthread_switch(old_thr->saved_ctx, active_thr->saved_ctx);
 
    	splx(LOW);
@@ -218,7 +218,7 @@ void sthread_user_dispatcher(void)
       
       		if (thread->wake_time == Clock) {
          		thread->wake_time = 0;
-         		queue_insert(exe_thr_list,thread);
+         		rbt_insert(exe_thr_list,thread->vruntime, thread);
       		} else {
          		queue_insert(tmp_queue,thread);
       		}
@@ -235,8 +235,8 @@ void sthread_user_yield(void)
   	splx(HIGH);
   	struct _sthread *old_thr;
   	old_thr = active_thr;
-  	queue_insert(exe_thr_list, old_thr);
-  	active_thr = queue_remove(exe_thr_list);
+  	rbt_insert(exe_thr_list, old_thr->vruntime, old_thr);
+  	active_thr = rbt_remove_first(exe_thr_list);
   	sthread_switch(old_thr->saved_ctx, active_thr->saved_ctx);
   	splx(LOW);
 }
@@ -300,7 +300,7 @@ int sthread_user_join(sthread_t thread, void **value_ptr)
 	queue_element_t *qe = NULL;
 
    	// search exe
-   	qe = exe_thr_list->first;
+   	qe = rbt_find(exe_thr_list, thread->vruntime)->queue->first;
    	while (!found && qe != NULL) {
       		if (qe->thread->tid == thread->tid) {
          	found = 1;
@@ -333,7 +333,7 @@ int sthread_user_join(sthread_t thread, void **value_ptr)
       
       		struct _sthread *old_thr = active_thr;
       		queue_insert(join_thr_list, old_thr);
-      		active_thr = queue_remove(exe_thr_list);
+      		active_thr = rbt_remove_first(exe_thr_list);
       		sthread_switch(old_thr->saved_ctx, active_thr->saved_ctx);
   
       		*value_ptr = thread->join_ret;
@@ -360,7 +360,7 @@ int sthread_user_sleep(int time)
 
    	queue_insert(sleep_thr_list,active_thr); 
    	sthread_t old_thr = active_thr;
-   	active_thr = queue_remove(exe_thr_list);
+   	active_thr = rbt_remove_first(exe_thr_list);
    	sthread_switch(old_thr->saved_ctx, active_thr->saved_ctx);
    
    	splx(LOW);
@@ -420,8 +420,8 @@ void sthread_user_mutex_lock(sthread_mutex_t lock)
     		splx(HIGH);
     		struct _sthread *old_thr;
     		old_thr = active_thr;
-    		//queue_insert(exe_thr_list, old_thr);
-    		active_thr = queue_remove(exe_thr_list);
+    		//rbt_insert(exe_thr_list,old_thr->vruntime, old_thr);
+    		active_thr = rbt_remove_first(exe_thr_list);
     		sthread_switch(old_thr->saved_ctx, active_thr->saved_ctx);
 
     		splx(LOW);
@@ -441,7 +441,7 @@ void sthread_user_mutex_unlock(sthread_mutex_t lock)
     		lock->thr = NULL;
   	} else {
     		lock->thr = queue_remove(lock->queue);
-    		queue_insert(exe_thr_list, lock->thr);
+    		rbt_insert(exe_thr_list, lock->thr->vruntime, lock->thr);
   	}	
 
   	atomic_clear(&(lock->l));
@@ -505,7 +505,7 @@ void sthread_user_monitor_wait(sthread_mon_t mon)
   	splx(HIGH);
   	struct _sthread *old_thr;
   	old_thr = active_thr;
-  	active_thr = queue_remove(exe_thr_list);
+  	active_thr = rbt_remove_first(exe_thr_list);
   	sthread_switch(old_thr->saved_ctx, active_thr->saved_ctx);
   	splx(LOW);
 }
