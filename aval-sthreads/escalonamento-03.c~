@@ -43,8 +43,8 @@ int main(int argc, char **argv)
   printf("1: %i, 2: %i\n", c1, c2);
   printf("2/1: %f\n", ((float)c2)/c1);
 
-//  if (c2/c1 >= 6 && c2/c1 <= 14)
-//    printf("PASSED\n");
+  if (c2/c1 >= 6 && c2/c1 <= 14)
+    printf("PASSED\n");
 
   return 0;
 }

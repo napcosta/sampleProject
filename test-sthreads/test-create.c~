@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 		exit(-1);
 	}
     
-//	sthread_yield();
+	sthread_yield();
 	printf("back in main\n");
 	return 0;
 }

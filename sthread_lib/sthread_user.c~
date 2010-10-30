@@ -35,6 +35,8 @@ struct _sthread {
 	int priority;
 	int vruntime;
 	int nice;
+	int ticks;
+	int sleeptime;
 
 };
 
@@ -50,7 +52,7 @@ static int tid_gen;                   /* gerador de tid's */
 
 #define CLOCK_TICK 10000
 
-#define MIN_DELAY 5*CLOCK_TICK
+#define MIN_DELAY 5
 #define MIN_PRIORITY 1
 #define MAX_PRIORITY 10
 #define BASE_VRUNTIME 0
@@ -63,11 +65,11 @@ static long Clock;
 
 
 void sthread_user_free(struct _sthread *thread);
-
+void rbt_dump(struct node *ptr);
 void sthread_aux_start(void){
-  	splx(LOW);
-  	active_thr->start_routine_ptr(active_thr->args);
-  	sthread_user_exit((void*)0);
+	splx(LOW);
+	active_thr->start_routine_ptr(active_thr->args);
+	sthread_user_exit((void*)0);
 }
 
 void sthread_user_dispatcher(void);
@@ -78,13 +80,11 @@ void sthread_dump()
 	puts("=== dump start ===");
 	puts("active thread");
 	printf("id: %d priority: %d vruntime: %d \n", active_thr->tid, active_thr->priority, active_thr->vruntime);
-	printf("runtime: sleeptime: \n");
-	printf("waittime: \n");
+	printf("runtime: %ld sleeptime: %d \n", Clock*active_thr->ticks, active_thr->sleeptime);
+	printf("waittime: %ld \n", active_thr->wake_time);
 	puts("");
 	puts(">>>> RB-Tree <<<<");
-	printf("id: priority: vruntime: \n");
-	printf("runtime: sleeptime: \n");
-	printf("waittime: \n");
+	rbt_dump(exe_thr_list->root);
 	puts("");	
 	puts(">>>>SleepList<<<<");
 	puts("");
@@ -96,6 +96,21 @@ void sthread_dump()
 	printf("runtime: sleeptime: \n");
 	printf("waittime: \n");
 	puts("Dump End");	
+}
+
+void rbt_dump(struct node *ptr) 
+{
+	if (ptr == NULL)
+		return;
+	rbt_dump(ptr->left);
+	queue_element_t *tmp = ptr->queue->first;
+	while(tmp != NULL){
+		printf("id: %d priority: %d vruntime: %d \n", tmp->thread->tid, tmp->thread->priority, tmp->thread->vruntime);
+		printf("runtime: %d sleeptime: %d \n", tmp->thread->ticks, tmp->thread->sleeptime);
+		printf("waittime: %ld \n", tmp->thread->wake_time);
+		tmp = tmp->next;
+	}
+	rbt_dump(ptr->right);
 }
 
 
@@ -127,6 +142,12 @@ void sthread_user_init(void) {
 	main_thread->join_tid = 0;
 	main_thread->join_ret = NULL;
 	main_thread->tid = tid_gen++;
+
+	main_thread->priority = 1;
+	main_thread->vruntime = 1;
+	main_thread->nice = 0;
+	main_thread->ticks = 0;
+	main_thread->sleeptime = 0;
   
   	active_thr = main_thread;
 
@@ -150,9 +171,11 @@ sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int
 	new_thread->priority = priority;
 	new_thread->vruntime = priority;
 	new_thread->nice = 0;
+	new_thread->ticks = 0;
+	new_thread->sleeptime = 0;
   
   	splx(HIGH);
-  	new_thread->tid = tid_gen++;
+	new_thread->tid = tid_gen++;
 
   	rbt_insert(exe_thr_list, priority, new_thread);
   	splx(LOW);
@@ -211,6 +234,10 @@ void sthread_user_exit(void *ret) {
 void sthread_user_dispatcher(void)
 {
    	Clock++;
+   	
+	active_thr->ticks++;
+ 	active_thr->vruntime += active_thr->ticks * (active_thr->priority + active_thr->nice);
+ 	
 	queue_t *tmp_queue = create_queue();   
 
    	while (!queue_is_empty(sleep_thr_list)) {
@@ -226,13 +253,15 @@ void sthread_user_dispatcher(void)
    	delete_queue(sleep_thr_list);
    	sleep_thr_list = tmp_queue;
    
-   	sthread_user_yield();
+   	if (active_thr->ticks >= MIN_DELAY && active_thr->vruntime > exe_thr_list->first->vruntime)
+	   	sthread_user_yield();
 }
 
 
 void sthread_user_yield(void)
 {
   	splx(HIGH);
+  	active_thr->ticks = 0;
   	struct _sthread *old_thr;
   	old_thr = active_thr;
   	rbt_insert(exe_thr_list, old_thr->vruntime, old_thr);
@@ -300,19 +329,24 @@ int sthread_user_join(sthread_t thread, void **value_ptr)
 	queue_element_t *qe = NULL;
 
    	// search exe
-   	qe = rbt_find(exe_thr_list, thread->vruntime)->queue->first;
-   	while (!found && qe != NULL) {
-      		if (qe->thread->tid == thread->tid) {
-         	found = 1;
-      		}
-      		qe = qe->next;
-   	}
-   	// search sleep
-   	qe = sleep_thr_list->first;
-   	while (!found && qe != NULL) {
-      		if (qe->thread->tid == thread->tid)
-         		found = 1;
-      		qe = qe->next;
+   	struct node *rbt_node = rbt_find(exe_thr_list, thread->vruntime);
+   	
+   	if (rbt_node != NULL) {
+ 
+		qe = rbt_node->queue->first;
+		while (!found && qe != NULL) {
+			if (qe->thread->tid == thread->tid) {
+			found = 1;
+ 			}
+			qe = qe->next;
+ 		}
+ 	}
+	// search sleep
+	qe = sleep_thr_list->first;
+	while (!found && qe != NULL) {
+		if (qe->thread->tid == thread->tid)
+			found = 1;
+		qe = qe->next;
    	}
 
    	// search join
@@ -357,8 +391,9 @@ int sthread_user_sleep(int time)
    	}
    
    	active_thr->wake_time = Clock + num_ticks;
+	active_thr->sleeptime += num_ticks;
+   	queue_insert(sleep_thr_list,active_thr);
 
-   	queue_insert(sleep_thr_list,active_thr); 
    	sthread_t old_thr = active_thr;
    	active_thr = rbt_remove_first(exe_thr_list);
    	sthread_switch(old_thr->saved_ctx, active_thr->saved_ctx);
@@ -386,7 +421,7 @@ sthread_mutex_t sthread_user_mutex_init()
 {
   	sthread_mutex_t lock;
 
-  	if(!(lock = malloc(sizeof(struct _sthread_mutex)))){
+	if(!(lock = malloc(sizeof(struct _sthread_mutex)))) {
     		printf("Error in creating mutex\n");
     		return 0;
   	}	
