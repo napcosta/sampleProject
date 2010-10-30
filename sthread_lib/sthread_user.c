@@ -147,6 +147,7 @@ void sthread_user_init(void) {
 	main_thread->vruntime = 1;
 	main_thread->nice = 0;
 	main_thread->ticks = 0;
+	
 	main_thread->sleeptime = 0;
   
   	active_thr = main_thread;
@@ -178,6 +179,7 @@ sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int
 	new_thread->tid = tid_gen++;
 
   	rbt_insert(exe_thr_list, priority, new_thread);
+
   	splx(LOW);
   	return new_thread;
 }
@@ -236,6 +238,8 @@ void sthread_user_dispatcher(void)
    	Clock++;
    	
 	active_thr->ticks++;
+
+   	active_thr->ticks++;
  	active_thr->vruntime += active_thr->ticks * (active_thr->priority + active_thr->nice);
  	
 	queue_t *tmp_queue = create_queue();   
@@ -252,8 +256,8 @@ void sthread_user_dispatcher(void)
    	}	
    	delete_queue(sleep_thr_list);
    	sleep_thr_list = tmp_queue;
-   
-   	if (active_thr->ticks >= MIN_DELAY && active_thr->vruntime > exe_thr_list->first->vruntime)
+  	
+   	if (active_thr->ticks >= MIN_DELAY && !rbt_is_empty(exe_thr_list) && active_thr->vruntime > exe_thr_list->first->vruntime)
 	   	sthread_user_yield();
 }
 

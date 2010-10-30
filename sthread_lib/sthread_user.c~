@@ -36,7 +36,10 @@ struct _sthread {
 	int vruntime;
 	int nice;
 	int ticks;
+<<<<<<< HEAD
 	int sleeptime;
+=======
+>>>>>>> d5f002648d47cb75bb9a24def9633ca5b42c6db0
 
 };
 
@@ -142,12 +145,18 @@ void sthread_user_init(void) {
 	main_thread->join_tid = 0;
 	main_thread->join_ret = NULL;
 	main_thread->tid = tid_gen++;
+<<<<<<< HEAD
 
+=======
+>>>>>>> d5f002648d47cb75bb9a24def9633ca5b42c6db0
 	main_thread->priority = 1;
 	main_thread->vruntime = 1;
 	main_thread->nice = 0;
 	main_thread->ticks = 0;
+<<<<<<< HEAD
 	main_thread->sleeptime = 0;
+=======
+>>>>>>> d5f002648d47cb75bb9a24def9633ca5b42c6db0
   
   	active_thr = main_thread;
 
@@ -172,12 +181,16 @@ sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int
 	new_thread->vruntime = priority;
 	new_thread->nice = 0;
 	new_thread->ticks = 0;
+<<<<<<< HEAD
 	new_thread->sleeptime = 0;
+=======
+>>>>>>> d5f002648d47cb75bb9a24def9633ca5b42c6db0
   
   	splx(HIGH);
 	new_thread->tid = tid_gen++;
 
   	rbt_insert(exe_thr_list, priority, new_thread);
+
   	splx(LOW);
   	return new_thread;
 }
@@ -234,8 +247,13 @@ void sthread_user_exit(void *ret) {
 void sthread_user_dispatcher(void)
 {
    	Clock++;
+<<<<<<< HEAD
    	
 	active_thr->ticks++;
+=======
+
+   	active_thr->ticks++;
+>>>>>>> d5f002648d47cb75bb9a24def9633ca5b42c6db0
  	active_thr->vruntime += active_thr->ticks * (active_thr->priority + active_thr->nice);
  	
 	queue_t *tmp_queue = create_queue();   
@@ -252,8 +270,13 @@ void sthread_user_dispatcher(void)
    	}	
    	delete_queue(sleep_thr_list);
    	sleep_thr_list = tmp_queue;
+<<<<<<< HEAD
    
    	if (active_thr->ticks >= MIN_DELAY && active_thr->vruntime > exe_thr_list->first->vruntime)
+=======
+  	
+   	if (active_thr->ticks >= MIN_DELAY && !rbt_is_empty(exe_thr_list) && active_thr->vruntime > exe_thr_list->first->vruntime)
+>>>>>>> d5f002648d47cb75bb9a24def9633ca5b42c6db0
 	   	sthread_user_yield();
 }
 
@@ -333,6 +356,7 @@ int sthread_user_join(sthread_t thread, void **value_ptr)
    	
    	if (rbt_node != NULL) {
  
+<<<<<<< HEAD
 		qe = rbt_node->queue->first;
 		while (!found && qe != NULL) {
 			if (qe->thread->tid == thread->tid) {
@@ -347,6 +371,22 @@ int sthread_user_join(sthread_t thread, void **value_ptr)
 		if (qe->thread->tid == thread->tid)
 			found = 1;
 		qe = qe->next;
+=======
+ 		qe = rbt_node->queue->first;
+ 		while (!found && qe != NULL) {
+ 			if (qe->thread->tid == thread->tid) {
+ 			found = 1;
+ 			}
+ 			qe = qe->next;
+ 		}
+ 	}
+   	// search sleep
+   	qe = sleep_thr_list->first;
+   	while (!found && qe != NULL) {
+      		if (qe->thread->tid == thread->tid)
+         		found = 1;
+      		qe = qe->next;
+>>>>>>> d5f002648d47cb75bb9a24def9633ca5b42c6db0
    	}
 
    	// search join

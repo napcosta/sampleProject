@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 
   printf("created threads\n");
 
-  for(; counter0 < 30000000; counter0++);
+  for(; counter0 < 3000000; counter0++);
 
   c1 = counter1;
   c2 = counter2;

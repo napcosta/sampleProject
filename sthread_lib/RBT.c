@@ -309,8 +309,11 @@ void rbt_insert(struct rbt* tree, int vruntime, struct _sthread *thread){
 	}
 
 	struct node *current_node = tree->root;
-
-	if(vruntime < current_node->vruntime)
+	
+	if(vruntime == tree->root->vruntime)
+		add_thread(current_node, add_item);
+	
+	else if(vruntime < current_node->vruntime)
 		insert_node_left(tree, current_node->left, current_node, add_item);
 	else insert_node_right(tree, current_node->right, current_node, add_item);
 
@@ -465,8 +468,9 @@ void delete_fixup(struct rbt *tree, struct node *node)
 				if (sibling->right->color == BLACK){
 					sibling->left->color = BLACK;
 					sibling->color = RED;
+					struct node *tmp = node->parent;
 					right_rotate(tree, sibling);
-					sibling = node->parent->right;
+					sibling = tmp->right;
 				}
 
 				sibling->color = node->parent->color;
@@ -572,7 +576,7 @@ struct _sthread *rbt_remove(struct rbt *tree, int vruntime)
 	treeRoot(tree);
 	lower(tree);
 
-	thread = queue_first(y->queue);
+	thread = queue_remove(y->queue);
 
 	destroy_node(y);
 
@@ -601,5 +605,7 @@ int rbt_is_empty(struct rbt *tree)
 
 struct _sthread *rbt_remove_first(struct rbt *tree)
 {
-	return rbt_remove(tree, tree->first->vruntime);
+	if(tree->first != tree->nil)
+		return rbt_remove(tree, tree->first->vruntime);
+	return NULL;
 }

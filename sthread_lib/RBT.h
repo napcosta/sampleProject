@@ -35,3 +35,5 @@ int rbt_is_empty(struct rbt *tree);
 struct _sthread *rbt_remove_first(struct rbt *tree);
 
 struct node *rbt_find(struct rbt *tree, int vruntime);
+
+void printTree(struct rbt *tree);
