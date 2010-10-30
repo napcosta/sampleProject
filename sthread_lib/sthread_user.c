@@ -35,6 +35,7 @@ struct _sthread {
 	int priority;
 	int vruntime;
 	int nice;
+	int ticks;
 
 };
 
@@ -50,7 +51,7 @@ static int tid_gen;                   /* gerador de tid's */
 
 #define CLOCK_TICK 10000
 
-#define MIN_DELAY 5*CLOCK_TICK
+#define MIN_DELAY 5
 #define MIN_PRIORITY 1
 #define MAX_PRIORITY 10
 #define BASE_VRUNTIME 0
@@ -127,6 +128,10 @@ void sthread_user_init(void) {
 	main_thread->join_tid = 0;
 	main_thread->join_ret = NULL;
 	main_thread->tid = tid_gen++;
+	main_thread->priority = 1;
+	main_thread->vruntime = 1;
+	main_thread->nice = 0;
+	main_thread->ticks = 0;
   
   	active_thr = main_thread;
 
@@ -150,11 +155,13 @@ sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int
 	new_thread->priority = priority;
 	new_thread->vruntime = priority;
 	new_thread->nice = 0;
+	new_thread->ticks = 0;
   
   	splx(HIGH);
   	new_thread->tid = tid_gen++;
 
   	rbt_insert(exe_thr_list, priority, new_thread);
+
   	splx(LOW);
   	return new_thread;
 }
@@ -211,6 +218,10 @@ void sthread_user_exit(void *ret) {
 void sthread_user_dispatcher(void)
 {
    	Clock++;
+
+   	active_thr->ticks++;
+ 	active_thr->vruntime += active_thr->ticks * (active_thr->priority + active_thr->nice);
+ 	
 	queue_t *tmp_queue = create_queue();   
 
    	while (!queue_is_empty(sleep_thr_list)) {
@@ -225,14 +236,16 @@ void sthread_user_dispatcher(void)
    	}	
    	delete_queue(sleep_thr_list);
    	sleep_thr_list = tmp_queue;
-   
-   	sthread_user_yield();
+  	
+   	if (active_thr->ticks >= MIN_DELAY && !rbt_is_empty(exe_thr_list) && active_thr->vruntime > exe_thr_list->first->vruntime)
+	   	sthread_user_yield();
 }
 
 
 void sthread_user_yield(void)
 {
   	splx(HIGH);
+  	active_thr->ticks = 0;
   	struct _sthread *old_thr;
   	old_thr = active_thr;
   	rbt_insert(exe_thr_list, old_thr->vruntime, old_thr);
@@ -300,13 +313,18 @@ int sthread_user_join(sthread_t thread, void **value_ptr)
 	queue_element_t *qe = NULL;
 
    	// search exe
-   	qe = rbt_find(exe_thr_list, thread->vruntime)->queue->first;
-   	while (!found && qe != NULL) {
-      		if (qe->thread->tid == thread->tid) {
-         	found = 1;
-      		}
-      		qe = qe->next;
-   	}
+   	struct node *rbt_node = rbt_find(exe_thr_list, thread->vruntime);
+   	
+   	if (rbt_node != NULL) {
+ 
+ 		qe = rbt_node->queue->first;
+ 		while (!found && qe != NULL) {
+ 			if (qe->thread->tid == thread->tid) {
+ 			found = 1;
+ 			}
+ 			qe = qe->next;
+ 		}
+ 	}
    	// search sleep
    	qe = sleep_thr_list->first;
    	while (!found && qe != NULL) {
