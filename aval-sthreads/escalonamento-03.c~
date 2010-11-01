@@ -29,14 +29,14 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  if (sthread_create(thread_2, (void*)0, 1) == NULL) {
+  if (sthread_create(thread_2, (void*)0, 2) == NULL) {
     printf("sthread_create failed\n");
     exit(1);
   }
 
   printf("created threads\n");
 
-  for(; counter0 < 30000000; counter0++);
+  for(; counter0 < 300000000; counter0++);
 
   c1 = counter1;
   c2 = counter2;
@@ -62,5 +62,6 @@ void *thread_2(void *arg)
   for (;;counter2++);
   return 0;
 }
+
 
 

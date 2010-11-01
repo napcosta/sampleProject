@@ -37,14 +37,30 @@ struct _sthread {
 	int nice;
 	int ticks;
 	int sleeptime;
+	int runtime;
+	int waittime;
 
 };
+
+struct _sthread_mon {
+
+ 	sthread_mutex_t mutex;
+	struct _sthread_mon *next;
+	struct rbt *tree;
+};
+
+struct monitor_list {
+	
+	struct _sthread_mon *first;
+};
+
+static struct monitor_list *mon_lst;
 
 
 static struct rbt *exe_thr_list;         /* lista de threads executaveis */
 static queue_t *dead_thr_list;        /* lista de threads "mortas" */
 static queue_t *sleep_thr_list;
-static queue_t *join_thr_list;       /* WTF? */
+static queue_t *join_thr_list;       
 static queue_t *zombie_thr_list;
 static struct _sthread *active_thr;   /* thread activa */
 static int tid_gen;                   /* gerador de tid's */
@@ -74,13 +90,14 @@ void sthread_aux_start(void){
 
 void sthread_user_dispatcher(void);
 
+void sleep_thr_dump();
 
 void sthread_dump() 
 {
 	puts("=== dump start ===");
 	puts("active thread");
 	printf("id: %d priority: %d vruntime: %d \n", active_thr->tid, active_thr->priority, active_thr->vruntime);
-	printf("runtime: %ld sleeptime: %d \n", Clock*active_thr->ticks, active_thr->sleeptime);
+	printf("runtime: %d sleeptime: %d \n", active_thr->runtime, active_thr->sleeptime);
 	printf("waittime: %ld \n", active_thr->wake_time);
 	puts("");
 	puts(">>>> RB-Tree <<<<");
@@ -88,26 +105,68 @@ void sthread_dump()
 	puts("");	
 	puts(">>>>SleepList<<<<");
 	puts("");
-	printf("id: priority: vruntime: \n");
-	printf("runtime: sleeptime: \n");
-	printf("waittime: \n");
+	sleep_thr_dump();
 	puts(">>>>BlockedList<<<<");
 	printf("id: priority: vruntime: \n");
 	printf("runtime: sleeptime: \n");
 	printf("waittime: \n");
-	puts("Dump End");	
+	puts("Dump End");
+}
+
+void sleep_thr_dump()
+{
+	int min = -1;
+	int i, count;
+
+	queue_element_t *count_ptr = sleep_thr_list->first; 
+
+	queue_element_t *tmp1 = sleep_thr_list->first;
+	if(tmp1 != NULL){
+		queue_element_t *tmp2 = tmp1->next;
+
+		for(count = 0; count_ptr != NULL; count++, count_ptr = count_ptr->next);
+
+		for(i = 0; i < count; i++){
+			for(; tmp2 != NULL; tmp2 = tmp2->next){
+				if(tmp1->thread->wake_time > tmp2->thread->wake_time && tmp2->thread->wake_time > min)
+					tmp1 = tmp2;
+			}
+			for(tmp2 = tmp1; tmp2 != NULL; tmp2 = tmp2->next)
+				if(tmp1->thread->wake_time == tmp2->thread->wake_time){
+					printf("id: %d priority: %d vruntime: %d\n", tmp2->thread->tid, tmp2->thread->priority, tmp2->thread->vruntime);
+					printf("runtime: %d sleeptime: %d\n", tmp2->thread->runtime, tmp2->thread->sleeptime);
+					printf("waittime: %d\n", tmp2->thread->waittime);
+					puts("");
+				}
+			min = tmp1->thread->wake_time;
+			tmp1 = sleep_thr_list->first;
+			tmp2 = tmp1->next;
+		}
+	}
+}
+
+void monitor_dump()
+{	
+	struct _sthread_mon *ptr = mon_lst->first;
+	
+	while(ptr != NULL) {
+		rbt_dump(ptr->tree->root);
+		ptr = ptr->next;
+	}
+
 }
 
 void rbt_dump(struct node *ptr) 
 {
-	if (ptr == NULL)
+	if (ptr->vruntime == 0)
 		return;
 	rbt_dump(ptr->left);
 	queue_element_t *tmp = ptr->queue->first;
 	while(tmp != NULL){
 		printf("id: %d priority: %d vruntime: %d \n", tmp->thread->tid, tmp->thread->priority, tmp->thread->vruntime);
-		printf("runtime: %d sleeptime: %d \n", tmp->thread->ticks, tmp->thread->sleeptime);
-		printf("waittime: %ld \n", tmp->thread->wake_time);
+		printf("runtime: %d sleeptime: %d \n", tmp->thread->runtime, tmp->thread->sleeptime);
+		printf("waittime: %d \n", tmp->thread->waittime);
+		puts("");
 		tmp = tmp->next;
 	}
 	rbt_dump(ptr->right);
@@ -149,6 +208,8 @@ void sthread_user_init(void) {
 	main_thread->ticks = 0;
 	
 	main_thread->sleeptime = 0;
+	main_thread->runtime = 0;
+	main_thread->waittime = 0;
   
   	active_thr = main_thread;
 
@@ -170,15 +231,17 @@ sthread_t sthread_user_create(sthread_start_func_t start_routine, void *arg, int
   	new_thread->saved_ctx = sthread_new_ctx(func);
 
 	new_thread->priority = priority;
-	new_thread->vruntime = priority;
+	new_thread->vruntime = exe_thr_list->first->vruntime;
 	new_thread->nice = 0;
 	new_thread->ticks = 0;
 	new_thread->sleeptime = 0;
+	new_thread->runtime = 0;
+	new_thread->waittime = 0;
   
   	splx(HIGH);
 	new_thread->tid = tid_gen++;
 
-  	rbt_insert(exe_thr_list, priority, new_thread);
+  	rbt_insert(exe_thr_list, new_thread->vruntime, new_thread);
 
   	splx(LOW);
   	return new_thread;
@@ -232,17 +295,33 @@ void sthread_user_exit(void *ret) {
    	splx(LOW);
 }
 
+void add_waitting_time(struct node *node){
+	
+	if (node->vruntime == 0)
+		return;
+	
+	queue_element_t *tmp = node->queue->first;
+
+	add_waitting_time(node->left);
+	for(;tmp != NULL; tmp = tmp->next)
+		tmp->thread->waittime++;
+	add_waitting_time(node->right);
+
+}
 
 void sthread_user_dispatcher(void)
 {
    	Clock++;
    	
 	active_thr->ticks++;
+	active_thr->runtime += CLOCK_TICK;
 
    	active_thr->ticks++;
  	active_thr->vruntime += active_thr->ticks * (active_thr->priority + active_thr->nice);
  	
-	queue_t *tmp_queue = create_queue();   
+	queue_t *tmp_queue = create_queue();
+
+	add_waitting_time(exe_thr_list->root);	
 
    	while (!queue_is_empty(sleep_thr_list)) {
       	struct _sthread *thread = queue_remove(sleep_thr_list);
@@ -251,6 +330,7 @@ void sthread_user_dispatcher(void)
          		thread->wake_time = 0;
          		rbt_insert(exe_thr_list,thread->vruntime, thread);
       		} else {
+			thread->sleeptime++;
          		queue_insert(tmp_queue,thread);
       		}
    	}	
@@ -490,10 +570,7 @@ void sthread_user_mutex_unlock(sthread_mutex_t lock)
  * Monitor implementation
  */
 
-struct _sthread_mon {
- 	sthread_mutex_t mutex;
-	queue_t* queue;
-};
+
 
 sthread_mon_t sthread_user_monitor_init()
 {
@@ -504,15 +581,42 @@ sthread_mon_t sthread_user_monitor_init()
   	}
 
   	mon->mutex = sthread_user_mutex_init();
-  	mon->queue = create_queue();
+  	mon->tree = rbt_init();
+	
+	mon->next = mon_lst->first;
+	mon_lst->first = mon;
+
   	return mon;
 }
 
 void sthread_user_monitor_free(sthread_mon_t mon)
-{
-  	sthread_user_mutex_free(mon->mutex);
-  	delete_queue(mon->queue);
-  	free(mon);
+{	
+	struct _sthread_mon *ptr1 = mon_lst->first;
+
+	if (ptr1 == mon) {
+		sthread_user_mutex_free(ptr1->mutex);
+		rbt_destroy(ptr1->tree);
+		mon_lst->first =ptr1->next;
+		free(ptr1);
+		return;
+	}
+	
+	if (ptr1->next != NULL) {
+	
+		struct _sthread_mon *ptr2 = ptr1->next;
+
+		while(ptr2 != mon) {
+			ptr1 = ptr2;
+			ptr2 = ptr2->next;
+		}
+	
+		ptr1 = ptr2->next;
+
+ 		sthread_user_mutex_free(ptr2->mutex);
+ 	 	rbt_destroy(ptr2->tree);
+  		free(ptr2);
+	} else 
+		puts("ERROR: No such monitor");
 }
 
 void sthread_user_monitor_enter(sthread_mon_t mon)
@@ -522,7 +626,7 @@ void sthread_user_monitor_enter(sthread_mon_t mon)
 
 void sthread_user_monitor_exit(sthread_mon_t mon)
 {
-  	sthread_user_mutex_unlock(mon->mutex);
+	sthread_user_mutex_unlock(mon->mutex);
 }
 
 void sthread_user_monitor_wait(sthread_mon_t mon)
@@ -536,7 +640,7 @@ void sthread_user_monitor_wait(sthread_mon_t mon)
 
   	/* inserts thread in queue of blocked threads */
   	temp = active_thr;
-  	queue_insert(mon->queue, temp);
+  	rbt_insert(mon->tree,temp->vruntime, temp);
 
   	/* exits mutual exclusion region */
   	sthread_user_mutex_unlock(mon->mutex);
@@ -559,9 +663,9 @@ void sthread_user_monitor_signal(sthread_mon_t mon)
   	}
 
   	while(atomic_test_and_set(&(mon->mutex->l))) {}
-  	if(!queue_is_empty(mon->queue)){
+  	if(!rbt_is_empty(mon->tree)){
     		/* changes blocking queue for thread */
-    		temp = queue_remove(mon->queue);
+    		temp = rbt_remove_first(mon->tree);
     		queue_insert(mon->mutex->queue, temp);
   	}
   	atomic_clear(&(mon->mutex->l));
@@ -577,9 +681,9 @@ void sthread_user_monitor_signalall(sthread_mon_t mon)
   	}
 
   	while(atomic_test_and_set(&(mon->mutex->l))) {}
-  	while(!queue_is_empty(mon->queue)){
+  	while(!rbt_is_empty(mon->tree)){
     	/* changes blocking queue for thread */
-    		temp = queue_remove(mon->queue);
+    		temp = rbt_remove_first(mon->tree);
     		queue_insert(mon->mutex->queue, temp);
   	}
   	atomic_clear(&(mon->mutex->l));

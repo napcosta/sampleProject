@@ -36,15 +36,15 @@ int main(int argc, char **argv)
 
   printf("created threads\n");
 
-  for(; counter0 < 3000000; counter0++);
+  for(; counter0 < 300000000; counter0++);
 
   c1 = counter1;
   c2 = counter2;
   printf("1: %i, 2: %i\n", c1, c2);
   printf("2/1: %f\n", ((float)c2)/c1);
 
-//  if (c2/c1 >= 6 && c2/c1 <= 14)
-//    printf("PASSED\n");
+  if (c2/c1 >= 6 && c2/c1 <= 14)
+    printf("PASSED\n");
 
   return 0;
 }
@@ -62,5 +62,6 @@ void *thread_2(void *arg)
   for (;;counter2++);
   return 0;
 }
+
 
 
